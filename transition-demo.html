@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Polar Petal — Projection Transition Demo</title>
+<style>
+  html, body { margin: 0; height: 100%; font-family: -apple-system, sans-serif; background: #0b0c10; color: #e8e8e8; }
+  #app { display: flex; height: 100%; }
+  #controls { width: 280px; flex: none; padding: 16px; box-sizing: border-box; background: #16171d; }
+  #controls h1 { font-size: 15px; margin: 0 0 8px; }
+  #controls p { font-size: 12px; color: #999; line-height: 1.4; }
+  #controls label { display: block; font-size: 12px; margin-top: 14px; color: #aaa; }
+  input[type=range] { width: 100%; }
+  #stage { flex: 1; }
+  svg { width: 100%; height: 100%; display: block; }
+  .sphere { fill: #10141a; stroke: #445; stroke-width: 0.75; }
+  .graticule { fill: none; stroke: #3a4a5a; stroke-width: 0.5; }
+  .land { fill: #2c4a3a; stroke: #cfead9; stroke-width: 0.4; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="controls">
+    <h1>Projection transition demo</h1>
+    <p>Uses d3's own <code>interpolateProjection</code> technique
+      (<a href="https://observablehq.com/@d3/projection-transitions" style="color:#8ab">observablehq.com/@d3/projection-transitions</a>)
+      unmodified: it blends two raw (&lambda;,&phi;)&rarr;[x,y] functions directly.
+      <code>projection.raw()</code> is what makes the polar petal projection a
+      legal input to that - it's re-anchored so raw(0,0) = [0,0], the
+      convention every d3 raw function shares.</p>
+    <label>t: <span id="tVal">0.00</span></label>
+    <input type="range" id="t" min="0" max="1" step="0.001" value="0">
+    <p id="from"></p>
+  </div>
+  <div id="stage"><svg id="svg"></svg></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm",
+    "d3-geo": "https://cdn.jsdelivr.net/npm/d3-geo@3/+esm",
+    "topojson-client": "https://cdn.jsdelivr.net/npm/topojson-client@3/+esm"
+  }
+}
+</script>
+<script type="module">
+import * as d3 from "d3";
+import * as topojson from "topojson-client";
+import { geoPolarPetal } from "./js/geoPolarPetal.js";
+
+(function() {
+  // Verbatim from https://observablehq.com/@d3/projection-transitions
+  function lerp1(a, b, t) { return a + (b - a) * t; }
+  function lerp2(a, b, t) { return [lerp1(a[0], b[0], t), lerp1(a[1], b[1], t)]; }
+
+  function fit(raw, extent) {
+    var proj = d3.geoProjection(raw).fitExtent(extent, { type: "Sphere" });
+    return { scale: proj.scale(), translate: proj.translate() };
+  }
+
+  function interpolateProjection(raw0, raw1, extent) {
+    var f0 = fit(raw0, extent), f1 = fit(raw1, extent);
+    return function(t) {
+      return d3.geoProjection(function(x, y) { return lerp2(raw0(x, y), raw1(x, y), t); })
+        .scale(lerp1(f0.scale, f1.scale, t))
+        .translate(lerp2(f0.translate, f1.translate, t))
+        .precision(0.1);
+    };
+  }
+
+  var svg = d3.select("#svg");
+  var sphereG = svg.append("g");
+  var gratG = svg.append("g");
+  var landG = svg.append("g");
+
+  var petal = geoPolarPetal().lobes(12);
+  // orthographicRaw is the classic globe view - both endpoints are plain d3
+  // raw functions, nothing project-specific about how they're combined.
+  var raw0 = d3.geoOrthographicRaw;
+  var raw1 = petal.raw();
+
+  var world = null;
+  d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(function(topo) {
+    world = topojson.feature(topo, topo.objects.countries);
+    render();
+  });
+
+  var tEl = document.getElementById("t"), tVal = document.getElementById("tVal");
+  var fromEl = document.getElementById("from");
+
+  function size() {
+    var el = document.getElementById("stage");
+    return [el.clientWidth, el.clientHeight];
+  }
+
+  function render() {
+    var t = +tEl.value;
+    tVal.textContent = t.toFixed(2);
+    fromEl.textContent = "t=" + t.toFixed(2) + ": " +
+      (t <= 0 ? "pure orthographic" : t >= 1 ? "pure polar petal" : "blend of both");
+
+    var wh = size();
+    var interpolate = interpolateProjection(raw0, raw1, [[10, 10], [wh[0] - 10, wh[1] - 10]]);
+    var projection = interpolate(t);
+    var path = d3.geoPath(projection);
+
+    sphereG.selectAll("path").data([{ type: "Sphere" }]).join("path")
+      .attr("class", "sphere").attr("d", path);
+    gratG.selectAll("path").data([d3.geoGraticule10()]).join("path")
+      .attr("class", "graticule").attr("d", path);
+    if (world) {
+      landG.selectAll("path").data(world.features).join("path")
+        .attr("class", "land").attr("d", path);
+    }
+  }
+
+  tEl.addEventListener("input", render);
+  window.addEventListener("resize", render);
+  render();
+})();
+</script>
+</body>
+</html>

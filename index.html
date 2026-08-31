@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Polar Petal Projection</title>
+<style>
+  html, body { margin: 0; height: 100%; font-family: -apple-system, sans-serif; background: #0b0c10; color: #e8e8e8; }
+  #app { display: flex; height: 100%; }
+  #controls { width: 260px; flex: none; padding: 16px; box-sizing: border-box; overflow-y: auto; background: #16171d; }
+  #controls h1 { font-size: 15px; margin: 0 0 16px; }
+  #controls label { display: block; font-size: 12px; margin-top: 14px; color: #aaa; }
+  #controls .row { display: flex; align-items: center; gap: 8px; }
+  #controls input[type=range] { flex: 1; }
+  #controls .val { width: 40px; text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; }
+  #controls .toggle { margin-top: 10px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ccc; }
+  #stage { flex: 1; position: relative; }
+  svg { width: 100%; height: 100%; display: block; }
+  .graticule { fill: none; stroke: #3a4a5a; stroke-width: 0.5; }
+  .outline { fill: none; stroke: #ff8a3d; stroke-width: 1; }
+  .land { fill: #2c4a3a; stroke: #cfead9; stroke-width: 0.4; }
+  .sphere { fill: #10141a; }
+  .center-point { fill: #ff3d3d; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="controls">
+    <h1>Polar Petal Projection</h1>
+
+    <label>Lobes: <span class="val" id="lobesVal"></span></label>
+    <div class="row"><input type="range" id="lobes" min="2" max="24" step="1" value="12"></div>
+
+    <label>Bow: <span class="val" id="bowVal"></span></label>
+    <div class="row"><input type="range" id="bow" min="0.2" max="4" step="0.05" value="1"></div>
+
+    <label>Spread: <span class="val" id="spreadVal"></span></label>
+    <div class="row"><input type="range" id="spread" min="0.2" max="1.5" step="0.05" value="1"></div>
+
+    <label>Scale: <span class="val" id="scaleVal"></span></label>
+    <div class="row"><input type="range" id="scale" min="40" max="400" step="1" value="160"></div>
+
+    <label>Profile</label>
+    <div class="row">
+      <select id="profile" style="width:100%; background:#0b0c10; color:#e8e8e8; border:1px solid #333; padding:4px;">
+        <option value="gore">Orange peel gore (equal-area)</option>
+        <option value="sine">Sine (default)</option>
+        <option value="vesica">Vesica piscis</option>
+        <option value="leaf">Leaf</option>
+        <option value="bezier">Bezier (control points)</option>
+      </select>
+    </div>
+
+    <div id="bezierControls" style="display:none;">
+      <label>Control point 1 - t: <span class="val" id="cp1tVal"></span></label>
+      <div class="row"><input type="range" id="cp1t" min="0.02" max="0.98" step="0.01" value="0.15"></div>
+      <label>Control point 1 - width: <span class="val" id="cp1wVal"></span></label>
+      <div class="row"><input type="range" id="cp1w" min="0" max="2" step="0.01" value="1.05"></div>
+      <label>Control point 2 - t: <span class="val" id="cp2tVal"></span></label>
+      <div class="row"><input type="range" id="cp2t" min="0.02" max="0.98" step="0.01" value="0.85"></div>
+      <label>Control point 2 - width: <span class="val" id="cp2wVal"></span></label>
+      <div class="row"><input type="range" id="cp2w" min="0" max="2" step="0.01" value="1.05"></div>
+    </div>
+
+    <label>Center longitude: <span class="val" id="centerLonVal"></span></label>
+    <div class="row"><input type="range" id="centerLon" min="-180" max="180" step="1" value="0"></div>
+
+    <label>Center latitude: <span class="val" id="centerLatVal"></span></label>
+    <div class="row"><input type="range" id="centerLat" min="-90" max="90" step="1" value="90"></div>
+
+    <label>Map rotation: <span class="val" id="mapRotVal"></span></label>
+    <div class="row"><input type="range" id="mapRot" min="-180" max="180" step="1" value="0"></div>
+
+    <div class="toggle"><input type="checkbox" id="showOutline" checked><label for="showOutline" style="margin:0;">Analytic petal outline (reference)</label></div>
+    <div class="row" style="margin-top:6px;">
+      <label for="outlineColor" style="margin:0; font-size:12px; color:#aaa;">Outline color</label>
+      <input type="color" id="outlineColor" value="#ff8a3d" style="margin-left:auto; background:none; border:1px solid #333; width:40px; height:24px; padding:0;">
+    </div>
+    <div class="toggle"><input type="checkbox" id="showGraticule" checked><label for="showGraticule" style="margin:0;">Graticule</label></div>
+    <div class="row" style="margin-top:6px; margin-left:22px;">
+      <select id="graticuleFilter" style="width:100%; background:#0b0c10; color:#e8e8e8; border:1px solid #333; padding:4px; font-size:12px;">
+        <option value="all">All lines</option>
+        <option value="minor-meridians">Minor meridians only</option>
+        <option value="minor-parallels">Minor parallels only</option>
+        <option value="major">Major (reference) lines only</option>
+        <option value="minor">Minor lines only (no major)</option>
+      </select>
+    </div>
+    <div class="toggle"><input type="checkbox" id="showLand"><label for="showLand" style="margin:0;">World map</label></div>
+  </div>
+  <div id="stage"><svg id="svg"></svg></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm",
+    "d3-geo": "https://cdn.jsdelivr.net/npm/d3-geo@3/+esm",
+    "topojson-client": "https://cdn.jsdelivr.net/npm/topojson-client@3/+esm"
+  }
+}
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

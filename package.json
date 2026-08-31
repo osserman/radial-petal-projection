@@ -1,0 +1,23 @@
+{
+  "name": "radial-petal-projection",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "geoPolarPetal - an interrupted radial petal D3 projection, packaged as a real ES module (import { geoPolarPetal } from \"radial-petal-projection\") built on d3-geo's raw-projection convention. index.html and transition-demo.html run with no build step via an import map resolving d3/d3-geo/topojson-client to a CDN.",
+  "main": "js/geoPolarPetal.js",
+  "module": "js/geoPolarPetal.js",
+  "exports": {
+    ".": "./js/geoPolarPetal.js",
+    "./fill-clip": "./js/geoPolarPetalFillClip.js"
+  },
+  "files": [
+    "js/geoPolarPetal.js",
+    "js/geoPolarPetalFillClip.js"
+  ],
+  "scripts": {
+    "test": "node test/seam-audit.mjs && node test/fill-partition.mjs && node test/equal-area.mjs"
+  },
+  "dependencies": {
+    "d3-geo": "^3.1.1"
+  }
+}
