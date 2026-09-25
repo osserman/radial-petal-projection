@@ -61,10 +61,12 @@ import { geoPolarPetal } from "./geoPolarPetal.js";
     spread: document.getElementById("spread"),
     scale: document.getElementById("scale"),
     profile: document.getElementById("profile"),
+    innerWidth: document.getElementById("innerWidth"),
     cp1t: document.getElementById("cp1t"),
     cp1w: document.getElementById("cp1w"),
     cp2t: document.getElementById("cp2t"),
     cp2w: document.getElementById("cp2w"),
+    outerWidth: document.getElementById("outerWidth"),
     centerLon: document.getElementById("centerLon"),
     centerLat: document.getElementById("centerLat"),
     mapRot: document.getElementById("mapRot"),
@@ -80,10 +82,12 @@ import { geoPolarPetal } from "./geoPolarPetal.js";
     bow: document.getElementById("bowVal"),
     spread: document.getElementById("spreadVal"),
     scale: document.getElementById("scaleVal"),
+    innerWidth: document.getElementById("innerWidthVal"),
     cp1t: document.getElementById("cp1tVal"),
     cp1w: document.getElementById("cp1wVal"),
     cp2t: document.getElementById("cp2tVal"),
     cp2w: document.getElementById("cp2wVal"),
+    outerWidth: document.getElementById("outerWidthVal"),
     centerLon: document.getElementById("centerLonVal"),
     centerLat: document.getElementById("centerLatVal"),
     mapRot: document.getElementById("mapRotVal")
@@ -108,7 +112,7 @@ import { geoPolarPetal } from "./geoPolarPetal.js";
     });
   }
 
-  ["lobes", "bow", "spread", "scale", "profile", "cp1t", "cp1w", "cp2t", "cp2w",
+  ["lobes", "bow", "spread", "scale", "profile", "innerWidth", "cp1t", "cp1w", "cp2t", "cp2w", "outerWidth",
    "centerLon", "centerLat", "mapRot", "showOutline",
    "showGraticule", "graticuleFilter", "showLand"].forEach(function(id) {
     controls[id].addEventListener("input", scheduleRender);
@@ -177,17 +181,21 @@ import { geoPolarPetal } from "./geoPolarPetal.js";
     var centerLon = +controls.centerLon.value;
     var centerLat = +controls.centerLat.value;
     var mapRot = +controls.mapRot.value;
+    var innerWidth = +controls.innerWidth.value;
     var cp1t = +controls.cp1t.value, cp1w = +controls.cp1w.value;
     var cp2t = +controls.cp2t.value, cp2w = +controls.cp2w.value;
+    var outerWidth = +controls.outerWidth.value;
 
     vals.lobes.textContent = n;
     vals.bow.textContent = bow.toFixed(2);
     vals.spread.textContent = spread.toFixed(2);
     vals.scale.textContent = scale;
+    vals.innerWidth.textContent = innerWidth.toFixed(2);
     vals.cp1t.textContent = cp1t.toFixed(2);
     vals.cp1w.textContent = cp1w.toFixed(2);
     vals.cp2t.textContent = cp2t.toFixed(2);
     vals.cp2w.textContent = cp2w.toFixed(2);
+    vals.outerWidth.textContent = outerWidth.toFixed(2);
     vals.centerLon.textContent = centerLon;
     vals.centerLat.textContent = centerLat;
     vals.mapRot.textContent = mapRot;
@@ -206,7 +214,12 @@ import { geoPolarPetal } from "./geoPolarPetal.js";
 
     projection.lobes(n).bow(bow).spread(spread).profile(profile).scale(scale).translate([cx, cy]);
     if (profile === "bezier") {
-      projection.profilePoints([[0, 0], [cp1t, cp1w], [cp2t, cp2w], [1, 0]]);
+      // innerWidth/outerWidth are the actual w(0)/w(1) drawn on screen -
+      // projection.profilePoints() only forces the endpoints' t to 0/1, not
+      // their width (see geoPolarPetal.js), so setting these above 0 lets
+      // the shape fill in at the center the way gore's sinc envelope does
+      // by construction, instead of always tapering to a point there.
+      projection.profilePoints([[0, innerWidth], [cp1t, cp1w], [cp2t, cp2w], [1, outerWidth]]);
     }
     // Standard d3 rotate convention to bring an arbitrary geographic point to
     // this projection's native center: [-lon, 90-lat]. mapRot is the third
