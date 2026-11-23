@@ -128,28 +128,36 @@ function leafWidth(t) {
   return Math.sqrt(Math.max(0, 1 - u * u));
 }
 
-// The literal orange-peel gore: what you actually get by slicing a globe
-// along n meridians and flattening the peel without stretching it.
+// The equal-area gore: slice the globe along n meridians, as for an orange
+// peel. There is no single "true" flattened gore - like any map of a curved
+// surface, a flat gore has to give something up, and classic globe gores
+// differ in what (sinusoidal gores keep the parallels straight, polyconic
+// ones curve them toward each tip). This one keeps two things exact:
 //
-// Flattening a gore preserves two things. Distance along the gore's spine -
-// which this projection already has, since r = rho. And the width at each
-// latitude, which on the sphere is the arc of the parallel inside the gore:
+// Distance along the gore's spine - which this projection already has,
+// since r = rho. And the width at each latitude, measured along the drawn
+// arc, matching the arc of the parallel inside the gore on the sphere:
 //
 //     half-width(phi) = (sector/2) * cos(phi) = (sector/2) * sin(rho)
 //
 // The width this projection actually draws is rho * (sector/2) * w * spread,
-// so matching the peel requires
+// so matching it requires
 //
 //     rho * w = sin(rho)      =>      w(t) = sin(rho)/rho,  rho = PI*t
 //
 // a sinc. Its maximum is 1 (at the tip), so it never overflows its lobe.
 //
+// What it gives up: shapes and angles, and the parallels are arcs around
+// the map center (every gore is bent around the shared center point), so
+// the outline is symmetric end to end only approximately - within ~4% in
+// straight-line width at 6 lobes, ~1% at 12 - and its widest point sits
+// slightly toward the center.
+//
 // Note this is NOT the existing "sine" profile. That one sets w = sin(PI*t)
 // directly, which leaves the DRAWN width as t*sin(PI*t) - peaking at
 // t = 0.646 rather than at the equator, which is the outward-shifted
 // asymmetry that motivated all of this. Dividing by rho is exactly the
-// correction, and it lands on the true peel shape rather than merely a
-// symmetric one.
+// correction that makes the arc widths symmetric about the equator.
 //
 // It is also exactly EQUAL-AREA. In polar form the projected area element is
 // dA = r * |d(r,theta)/d(rho,lambda)| drho dlambda = rho * w * spread
